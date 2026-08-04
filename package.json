@@ -35,7 +35,7 @@
       "preload/**/*",
       "*.html",
       "assets/**/*",
-      "!**/node_modules/**/{test,tests,__tests}/*"
+      "**/node_modules/electron-updater/**/*"
     ]
   },
   "dependencies": {

@@ -29,7 +29,7 @@
       "shortcutName": "GPU Monitor",
       "uninstallDisplayName": "GPU Monitor"
     },
-    "artifactName": "${productName}-Setup-${version}-${os}.${ext}",
+    "artifactName": "GPU-Monitor-Setup-${version}-${os}.${ext}",
     "files": [
       "src/**/*",
       "preload/**/*",

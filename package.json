@@ -29,14 +29,7 @@
       "shortcutName": "GPU Monitor",
       "uninstallDisplayName": "GPU Monitor"
     },
-    "artifactName": "GPU-Monitor-Setup-${version}-${os}.${ext}",
-    "files": [
-      "src/**/*",
-      "preload/**/*",
-      "*.html",
-      "assets/**/*",
-      "**/node_modules/electron-updater/**/*"
-    ]
+    "artifactName": "GPU-Monitor-Setup-${version}-${os}.${ext}"
   },
   "dependencies": {
     "electron-updater": "^6.0.0"

@@ -1,0 +1,333 @@
+/* ── Theme Variables (default: NVIDIA Green) ── */
+:root {
+  --bg-primary:    #0d1117;
+  --bg-secondary:  rgba(22, 27, 34, 0.95);
+  --bg-card:       rgba(13, 17, 23, 0.9);
+  --bg-gauge:      rgba(255, 255, 255, 0.06);
+  --text-primary:  #e6edf3;
+  --text-secondary:#8b949e;
+  --accent:        #76b903;
+  --accent-dim:    rgba(118, 185, 3, 0.12);
+  --border:        rgba(255, 255, 255, 0.08);
+  --danger:        #f85149;
+  --warning:       #d29922;
+  --gauge-bg:      rgba(255, 255, 255, 0.04);
+
+  --temp-good:  #76b903;
+  --temp-warn:  #facc15;
+  --temp-hot:   #fb923c;
+  --temp-crit:  #f85149;
+
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+[data-theme="blue"] {
+  --accent:     #38bdf8;
+  --accent-dim: rgba(56, 189, 248, 0.12);
+  --temp-good:  #22d3ee;
+  --temp-warn:  #facc15;
+  --temp-hot:   #fb923c;
+  --temp-crit:  #f85149;
+}
+
+[data-theme="purple"] {
+  --accent:     #a78bfa;
+  --accent-dim: rgba(167, 139, 250, 0.12);
+  --temp-good:  #a78bfa;
+  --temp-warn:  #facc15;
+  --temp-hot:   #fb923c;
+  --temp-crit:  #ef4444;
+}
+
+[data-theme="amber"] {
+  --accent:     #fbbf24;
+  --accent-dim: rgba(251, 191, 36, 0.12);
+  --temp-good:  #fbbf24;
+  --temp-warn:  #fb923c;
+  --temp-hot:   #f97316;
+  --temp-crit:  #ef4444;
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+/* ── Top Bar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  /* JS handles dragging for no-frame windows */
+}
+
+.brand {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.3px;
+  -webkit-app-region: no-drag;
+}
+
+.controls { display: flex; gap: 2px; }
+
+.controls button {
+  -webkit-app-region: no-drag;
+  width: 28px; height: 28px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.controls button:hover { background: var(--accent-dim); color: var(--accent); }
+
+/* ── Loading State ── */
+.loading-state {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 45px);
+  color: var(--text-secondary);
+  font-size: 13px;
+  gap: 12px;
+}
+.loading-state.visible { display: flex; }
+
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── GPU Cards Grid ── */
+.gpu-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.gpu-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.gpu-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 6px;
+}
+
+.gpu-accent {
+  width: 3px;
+  height: 28px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.gpu-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gpu-index {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-gauge);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+/* ── Metrics Row ── */
+.metrics-row {
+  display: grid;
+  gap: 1px;
+  padding: 0 14px 6px;
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-icon {
+  font-size: 11px;
+  width: 22px;
+  text-align: center;
+}
+
+.metric-label {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  width: 76px;
+}
+
+.metric-gauge {
+  flex: 1;
+  height: 4px;
+  background: var(--gauge-bg);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.metric-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease, background-color 0.3s ease;
+}
+
+.metric-value {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  min-width: 62px;
+  text-align: right;
+}
+
+/* ── Process List ── */
+.process-list {
+  border-top: 1px solid var(--border);
+  padding: 6px 14px 8px;
+}
+
+.process-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+
+.process-pid {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.process-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.process-mem {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  width: 50px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Settings Panel ── */
+.settings-panel {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: calc(100vh - 45px);
+  background: var(--bg-primary);
+  z-index: 100;
+  overflow-y: auto;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.settings-panel.hidden {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-header h3 {
+  font-size: 15px;
+  color: var(--accent);
+}
+
+.settings-header button {
+  background: none; border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.settings-header button:hover { background: var(--bg-gauge); }
+
+.settings-body { padding: 14px 16px; }
+
+.setting-group { margin-bottom: 16px; }
+
+.setting-group label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.setting-group input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.setting-group input[type="number"],
+.setting-group select {
+  width: 100%;
+  background: var(--bg-gauge);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 6px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+.setting-group .value-display {
+  font-size: 13px;
+  color: var(--accent);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+}
+
+/* ── Update Overlay ── */
+.update-overlay.hidden { display: none !important; }
+.update-dialog { animation: fadeScaleIn 0.3s ease; }
+@keyframes fadeScaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }

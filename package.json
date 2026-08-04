@@ -1,0 +1,52 @@
+{
+  "name": "gpu-monitor",
+  "version": "1.0.0",
+  "description": "Lightweight NVIDIA GPU monitoring overlay for Windows",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:exe": "electron-builder --win",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "com.gpu-monitor.app",
+    "productName": "GPU Monitor",
+    "icon": "build/icon.png",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GPU Monitor",
+      "uninstallDisplayName": "GPU Monitor"
+    },
+    "artifactName": "${productName}-Setup-${version}-${os}.${ext}",
+    "files": [
+      "src/**/*",
+      "preload/**/*",
+      "*.html",
+      "assets/**/*",
+      "!**/node_modules/**/{test,tests,__tests}/*"
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.0.0"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "allowScripts": {
+    "electron@35.7.5": true,
+    "electron-builder@*": true
+  }
+}

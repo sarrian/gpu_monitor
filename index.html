@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPU Monitor</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <!-- Top bar with controls -->
+  <div class="topbar">
+    <span class="brand">⚡ GPU Monitor</span>
+    <div class="controls">
+      <button id="btn-pause" title="Pause/Resume updates">⏸</button>
+      <button id="btn-pin" title="Toggle always on top">📌</button>
+      <button id="btn-settings" title="Settings">⚙</button>
+      <button id="btn-close" title="Close">✕</button>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div class="loading-state" id="loading-state">
+    <div class="spinner"></div>
+    <span>Loading...</span>
+  </div>
+
+  <!-- GPU cards container -->
+  <div class="gpu-container" id="gpu-container" style="display:none;"></div>
+
+  <!-- Debug: shows if page loads — remove once confirmed working -->
+  <div id="page-status" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#7d94b3;font-size:12px;text-align:center;">
+    ⚡ GPU Monitor<br>Page loaded — checking NVIDIA...
+  </div>
+
+  <!-- Settings panel (hidden by default) -->
+  <div class="settings-panel hidden" id="settings-panel">
+    <div class="settings-header">
+      <h3>Settings</h3>
+      <button id="btn-settings-close">✕</button>
+    </div>
+    <div class="settings-body">
+      <div class="setting-group">
+        <label>Update interval</label>
+        <input type="range" id="set-interval" min="500" max="5000" step="250" value="1000">
+        <span id="val-interval">1000ms</span>
+      </div>
+      <div class="setting-group">
+        <label>Opacity</label>
+        <input type="range" id="set-opacity" min="30" max="100" step="5" value="82">
+        <span id="val-opacity">82%</span>
+      </div>
+      <div class="setting-group">
+        <label>Show processes</label>
+        <select id="set-show-processes">
+          <option value="true" selected>Yes</option>
+          <option value="false">No</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Process limit</label>
+        <input type="number" id="set-process-limit" min="1" max="20" value="5">
+      </div>
+      <div class="setting-group">
+        <label>Color theme</label>
+        <select id="set-theme">
+          <option value="nvidia" selected>NVIDIA Green</option>
+          <option value="blue">Electric Blue</option>
+          <option value="purple">Purple Glow</option>
+          <option value="amber">Amber Alert</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Updates</label>
+        <button id="btn-check-updates" style="width:100%;padding:8px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:12px;">Check for Updates</button>
+        <span id="update-status" style="display:block;margin-top:4px;font-size:11px;color:var(--text-secondary);"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Update notification overlay (shown when update downloaded) -->
+  <div id="update-overlay" class="update-overlay hidden" style="position:absolute;top:0;left:0;width:100%;height:calc(100% - 45px);background:rgba(0,0,0,0.6);z-index:200;display:flex;align-items:center;justify-content:center;">
+    <div class="update-dialog" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:24px;text-align:center;min-width:300px;">
+      <div style="font-size:36px;margin-bottom:12px;">🔄</div>
+      <h3 style="color:var(--accent);margin-bottom:8px;font-size:15px;">Update Ready to Install</h3>
+      <p id="update-info" style="color:var(--text-secondary);font-size:12px;margin-bottom:4px;"></p>
+      <p style="color:var(--text-primary);font-size:13px;margin-bottom:16px;">Restart to apply the update.</p>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button id="btn-restart-update" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;">Restart Now</button>
+        <button id="btn-later-update" style="padding:8px 20px;background:transparent;color:var(--text-secondary);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:13px;">Later</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="preload/index.js"></script>
+  <script src="src/renderer.js"></script>
+</body>
+</html>

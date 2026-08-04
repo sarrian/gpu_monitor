@@ -1,6 +1,6 @@
 {
   "name": "gpu-monitor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lightweight NVIDIA GPU monitoring overlay for Windows",
   "main": "src/main.js",
   "scripts": {

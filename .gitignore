@@ -3,3 +3,5 @@ dist/
 .claude/
 config.json
 *.pfx
+# one-off scratch scripts (not part of the app)
+tmp_*.js

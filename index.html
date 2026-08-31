@@ -14,23 +14,19 @@
       <button id="btn-pause" title="Pause/Resume updates">⏸</button>
       <button id="btn-pin" title="Toggle always on top">📌</button>
       <button id="btn-settings" title="Settings">⚙</button>
-      <button id="btn-close" title="Close">✕</button>
+      <button id="btn-close" title="Minimize to tray">—</button>
+      <button id="btn-quit" title="Quit GPU Monitor" style="color:var(--danger);">⏻</button>
     </div>
   </div>
 
   <!-- Loading state -->
-  <div class="loading-state" id="loading-state">
+  <div class="loading-state visible" id="loading-state">
     <div class="spinner"></div>
     <span>Loading...</span>
   </div>
 
   <!-- GPU cards container -->
-  <div class="gpu-container" id="gpu-container" style="display:none;"></div>
-
-  <!-- Debug: shows if page loads — remove once confirmed working -->
-  <div id="page-status" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#7d94b3;font-size:12px;text-align:center;">
-    ⚡ GPU Monitor<br>Page loaded — checking NVIDIA...
-  </div>
+  <div class="gpu-container" id="gpu-container"></div>
 
   <!-- Settings panel (hidden by default) -->
   <div class="settings-panel hidden" id="settings-panel">
@@ -70,8 +66,81 @@
         </select>
       </div>
       <div class="setting-group">
+        <label>Show Temp</label>
+        <select id="set-show-temp">
+          <option value="true" selected>Show Temp</option>
+          <option value="false">Hide Temp</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Show Power</label>
+        <select id="set-show-power">
+          <option value="true" selected>Show Power</option>
+          <option value="false">Hide Power</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Show GPU Load</label>
+        <select id="set-show-gpu-load">
+          <option value="true" selected>Show GPU Load</option>
+          <option value="false">Hide GPU Load</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Show Mem Load</label>
+        <select id="set-show-mem-load">
+          <option value="true" selected>Show Mem Load</option>
+          <option value="false">Hide Mem Load</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Show VRAM</label>
+        <select id="set-show-vram">
+          <option value="true" selected>Show VRAM</option>
+          <option value="false">Hide VRAM</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Show GPU Clock</label>
+        <select id="set-show-gpu-clock">
+          <option value="true" selected>Show GPU Clock</option>
+          <option value="false">Hide GPU Clock</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Show Mem Clock</label>
+        <select id="set-show-mem-clock">
+          <option value="true" selected>Show Mem Clock</option>
+          <option value="false">Hide Mem Clock</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Show Fan</label>
+        <select id="set-show-fan">
+          <option value="true" selected>Show Fan</option>
+          <option value="false">Hide Fan</option>
+        </select>
+      </div>
+
+      <div class="setting-group">
+        <label>Sparklines</label>
+        <select id="set-show-sparklines">
+          <option value="true" selected>Show Sparklines</option>
+          <option value="false">Hide Sparklines</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>History Length</label>
+        <input type="range" id="set-sparkline-history" min="15" max="300" step="5" value="60">
+        <span id="val-sparkline-history">60s</span>
+      </div>
+
+      <div class="setting-group">
         <label>Updates</label>
         <button id="btn-check-updates" style="width:100%;padding:8px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:12px;">Check for Updates</button>
+        <select id="set-release-version" style="display:none;margin-top:4px;">
+          <option value="__refresh__">Refresh list…</option>
+        </select>
         <span id="update-status" style="display:block;margin-top:4px;font-size:11px;color:var(--text-secondary);"></span>
       </div>
     </div>
@@ -91,7 +160,9 @@
     </div>
   </div>
 
-  <script src="preload/index.js"></script>
+  <!-- preload is injected via Electron's webPreferences.preload in main.js -->
+
+  <script src="src/sparklines.js"></script>
   <script src="src/renderer.js"></script>
 </body>
 </html>

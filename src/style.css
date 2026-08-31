@@ -49,7 +49,17 @@
   --temp-crit:  #ef4444;
 }
 
+/* ── GPU accent colors (cycle palette) ── */
+.gpu-accent { width: 3px; height: 22px; background: var(--gpu-accent, var(--accent)); border-radius: 2px; }
+
+[data-theme="blue"]   { --gpu-accent-0: #76b903; --gpu-accent-1: #38bdf8; --gpu-accent-2: #a78bfa; --gpu-accent-3: #fbbf24; --gpu-accent-4: #fb7185; }
+[data-theme="purple"] { --gpu-accent-0: #76b903; --gpu-accent-1: #a78bfa; --gpu-accent-2: #38bdf8; --gpu-accent-3: #fbbf24; --gpu-accent-4: #fb7185; }
+[data-theme="amber"]  { --gpu-accent-0: #76b903; --gpu-accent-1: #fbbf24; --gpu-accent-2: #fb923c; --gpu-accent-3: #a78bfa; --gpu-accent-4: #38bdf8; }
+
 /* ── Reset & Base ── */
+/* Dark UA controls — makes native <select> popups + number-input spinners
+   render in the dark palette so they match the window (was white before) */
+html { color-scheme: dark; }
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -61,7 +71,9 @@ body {
   overflow: hidden;
   user-select: none;
   -webkit-app-region: no-drag;
+  animation: fadeIn 0.35s ease forwards;
 }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── Top Bar ── */
 .topbar {
@@ -97,6 +109,7 @@ body {
   display: flex; align-items: center; justify-content: center;
 }
 .controls button:hover { background: var(--accent-dim); color: var(--accent); }
+.controls button#btn-quit:hover { background: rgba(248, 81, 73, 0.15); color: #f85149; }
 
 /* ── Loading State ── */
 .loading-state {
@@ -124,27 +137,39 @@ body {
 .gpu-container {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: 6px;
+  padding: 8px 12px;
+  position: absolute;
+  top: 45px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
 }
+
+/* Scrollbar styling */
+.gpu-container::-webkit-scrollbar { width: 6px; }
+.gpu-container::-webkit-scrollbar-track { background: transparent; }
+.gpu-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.gpu-container::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
 .gpu-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 10px;
-  overflow: hidden;
+  /* overflow: hidden removed — sparkline graph must not be clipped below the visible card area */
 }
 
 .gpu-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px 6px;
+  padding: 7px 12px 4px;
 }
 
 .gpu-accent {
   width: 3px;
-  height: 28px;
+  height: 22px;
   background: var(--accent);
   border-radius: 2px;
 }
@@ -167,12 +192,177 @@ body {
   font-family: var(--font-mono);
 }
 
-/* ── Metrics Row ── */
-.metrics-row {
-  display: grid;
-  gap: 1px;
-  padding: 0 14px 6px;
+/* ── Metrics Grid (stat rows + sparkline) ── */
+
+/* Stat rows container — tight stacked layout, no gaps. */
+
+.metrics-grid {
+  display: flex;
+  flex-direction: column;
 }
+
+/* Stat row: flat row with no individual background or border. */
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  /* v1.0.1 compact geometry: no grid padding, no bleed margin — the row already
+     spans the full card width, so the hover background is full-width on its own */
+  padding: 2px 10px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+  user-select: none;
+  pointer-events: auto !important; /* ensure clicks reach stat rows */
+}
+.stat-row:hover {
+  background: var(--accent-dim);
+}
+
+/* Selectable icon — the ONLY clickable part of each stat row. */
+.stat-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  /* transparent border keeps the box 18×18 (global border-box) so the
+     selected state — accent border only — causes no layout shift */
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+  pointer-events: auto !important; /* ensure clicks reach icon buttons */
+}
+
+.stat-icon-btn:hover {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+/* Selected metric: accent text + bright 1px border. Deliberately NO background
+   fill or glow — the icon selection *is* the sparkline trigger, so the border
+   alone marks it. (No row-level highlight: the row has no other role.) */
+.stat-icon-btn.sparkline-pill-active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Spacer to push value to the right edge. */
+.stat-row > .stat-bar {
+  flex: 1;
+  min-width: 30px;
+}
+
+.stat-label {
+  font-size: 9px;
+  color: var(--text-secondary);
+  /* Column must fit the longest label ("GPU LOAD" / "MEM LOAD") — a span narrower
+     than its text overflows rightward onto the .stat-bar that follows it in flex order */
+  width: 52px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.stat-bar {
+  height: 3px;
+  background: var(--gauge-bg);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease, background-color 0.3s ease;
+}
+
+.stat-value {
+  /* Same size as .metric-value (VRAM row) — right column must read uniformly */
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  min-width: 46px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Metrics row (legacy, for non-stat-row items) ── */
+
+.metric-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px 4px;
+  background: var(--bg-gauge);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 10.5px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, opacity 0.15s;
+  white-space: nowrap;
+  -webkit-app-region: no-drag;
+}
+.metric-pill:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+.metric-pill-active {
+  background: var(--accent-dim) !important;
+  border-color: var(--accent) !important;
+}
+
+.metric-pill-icon {
+  font-size: 12px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.metric-pill-label {
+  font-size: 9.5px;
+  color: var(--text-secondary);
+  width: 38px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.metric-pill-bar {
+  flex: 1;
+  max-width: 80px;
+  height: 4px;
+  background: var(--gauge-bg);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.metric-pill-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease, background-color 0.3s ease;
+}
+
+.metric-pill-value {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  min-width: 40px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Metrics item (legacy, for non-pill items) ── */
 
 .metric-item {
   display: flex;
@@ -211,21 +401,21 @@ body {
   font-size: 11px;
   font-family: var(--font-mono);
   color: var(--text-primary);
-  min-width: 62px;
+  min-width: 46px;
   text-align: right;
 }
 
 /* ── Process List ── */
 .process-list {
   border-top: 1px solid var(--border);
-  padding: 6px 14px 8px;
+  padding: 4px 12px 5px;
 }
 
 .process-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 0;
+  padding: 2px 0;
   font-size: 10.5px;
   color: var(--text-secondary);
 }
@@ -250,6 +440,61 @@ body {
   width: 50px;
   text-align: right;
   flex-shrink: 0;
+}
+
+/* ── Sparkline pill row (inside GPU card metrics grid) ── */
+
+.sparkline-pill-row {
+  grid-column: 1 / -1;
+  gap: 3px;
+  padding: 3px 0 1px;
+  border-top: 1px solid var(--border);
+  margin-top: 1px;
+}
+.sparkline-pill-group {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.sparkline-pill {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  background: var(--bg-gauge);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 9.5px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.sparkline-pill:hover {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+}
+
+.sparkline-canvas {
+  margin-top: 3px;
+  line-height: 0;
+  min-height: 52px;
+}
+
+.sparkline-pill-row.sparkline-hidden {
+  display: none !important;
+}
+
+.sparkline-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.sparkline-path {
+  fill: none;
+  stroke: var(--gpu-accent, var(--accent));
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
 /* ── Settings Panel ── */
@@ -326,6 +571,51 @@ body {
   margin-top: 4px;
   font-family: var(--font-mono);
 }
+
+/* ── Dark dropdowns (custom <select> replacement) ── */
+.dd { position: relative; }
+.dd-btn {
+  width: 100%;
+  background: var(--bg-gauge);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 6px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  text-align: left;
+}
+.dd-btn:hover { border-color: var(--accent); }
+.dd-list {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 210;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  max-height: 180px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.dd-opt {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+.dd-opt:hover:not(:disabled) { background: var(--accent-dim); color: var(--accent); }
+.dd-opt:disabled { color: var(--text-secondary); opacity: 0.6; cursor: default; }
+.dd-opt-sel { background: var(--accent-dim); }
+.dd-native { display: none !important; }
 
 /* ── Update Overlay ── */
 .update-overlay.hidden { display: none !important; }

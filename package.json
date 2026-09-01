@@ -5,6 +5,7 @@
   "scripts": {
     "start": "electron .",
     "build:exe": "electron-builder --win",
+    "release:publish": "node release-publish.js",
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {

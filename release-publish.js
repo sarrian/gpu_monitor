@@ -1,17 +1,32 @@
-// release-publish.js — create the GitHub release for the current version and attach the Windows installer.
-// No extra dependencies: uses Node's built-in fetch + fs. Reads the PAT from the git remote (or $GH_TOKEN).
+// release-publish.js — create the GitHub release and attach its assets.
+// No extra deps: Node's built-in fetch for the API + curl for uploads.
+//
+// Uploads use GitHub's RAW octet-stream method (--data-binary + Content-Type: application/octet-stream),
+// which stores the exact file bytes. A multipart `-F name=@file` upload against the `?name=` URL instead
+// stores the whole multipart envelope *inside* the asset (corrupting it) — so we do NOT use `-F` here.
+//
+// Full electron-updater asset set is uploaded:
+//   • GPU-Monitor-Setup-<v>-win.exe          — the NSIS installer
+//   • latest.yml                             — the update manifest electron-updater reads (must be valid YAML)
+//   • GPU-Monitor-Setup-<v>-win.exe.blockmap — blockmap for differential downloads
+// Existing assets are deleted first, so a re-run always replaces any corrupt/stale uploads.
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 const { execFileSync } = require('child_process');
 
 const REPO = 'sarrian/gpu_monitor';
 const DIR = __dirname;
+const DIST = path.join(DIR, 'dist');
 const VERSION = JSON.parse(fs.readFileSync(path.join(DIR, 'package.json'), 'utf8')).version;
 const TAG = 'v' + VERSION;
-const ASSET_NAME = `GPU-Monitor-Setup-${VERSION}-win.exe`;
-const ASSET_PATH = path.join(DIR, 'dist', ASSET_NAME);
+const INSTALLER = `GPU-Monitor-Setup-${VERSION}-win.exe`;
+
+const ASSETS = [
+  { name: INSTALLER, file: path.join(DIST, INSTALLER) },
+  { name: 'latest.yml', file: path.join(DIST, 'latest.yml') },
+  { name: INSTALLER + '.blockmap', file: path.join(DIST, INSTALLER + '.blockmap') },
+].filter((a) => fs.existsSync(a.file));
 
 function getToken() {
   if (process.env.GH_TOKEN) return process.env.GH_TOKEN;
@@ -37,10 +52,40 @@ const BODY = [
   '- **Minimize glyph** — the top-bar close-style ✕ is now a minimize line (—); ⏻ still quits.',
   '',
   '### Install',
-  `- Windows 10/11 x64, NVIDIA GPU. Run \`${ASSET_NAME}\` (per-machine install, desktop + start-menu shortcuts).`,
+  `- Windows 10/11 x64, NVIDIA GPU. Run \`${INSTALLER}\` (per-machine install, desktop + start-menu shortcuts).`,
 ].join('\n');
 
 const H = { Authorization: `Bearer ${TOKEN}`, Accept: 'application/vnd.github+json' };
+
+/** Delete all existing assets on the release (clean slate so re-runs fully replace any corrupt uploads). */
+async function clearAssets(rel) {
+  for (const a of (rel.assets || [])) {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/assets/${a.id}`, { method: 'DELETE', headers: H });
+    console.log(`  deleted ${a.name} → ${res.status}`);
+  }
+}
+
+/** Upload one asset with the RAW octet-stream method so GitHub stores the exact file bytes. */
+function curlUpload(rel, asset) {
+  const uploadUrl = `https://uploads.github.com/repos/${REPO}/releases/${rel.id}/assets?name=${encodeURIComponent(asset.name)}`;
+  const args = [
+    '-sS', '-X', 'POST', uploadUrl,
+    '-H', `Authorization: Bearer ${TOKEN}`,
+    '-H', 'Content-Type: application/octet-stream',
+    '--data-binary', '@' + asset.file,
+    '-w', '\n__HTTP_STATUS__:%{http_code}',
+  ];
+  let out;
+  try {
+    out = execFileSync('curl', args, { encoding: 'utf8' });
+  } catch (e) {
+    out = ((e.stdout || '') + '\n' + (e.stderr || '')).toString();
+  }
+  const m = out.match(/__HTTP_STATUS__:(\d+)/);
+  const status = m ? parseInt(m[1], 10) : 0;
+  const jsonPart = (out.split('__HTTP_STATUS__:')[0] || '').trim();
+  if (status < 200 || status >= 300) throw new Error(`Upload ${asset.name} → HTTP ${status}: ${jsonPart.slice(0, 300)}`);
+}
 
 async function main() {
   // 1) Create the release (reuse an existing one for the same tag if it already exists).
@@ -62,29 +107,14 @@ async function main() {
     console.log('✓ using existing release:', rel.html_url);
   }
 
-  // 2) Upload the installer via curl (multipart, file under the required "name" field). curl frames it correctly.
-  const uploadUrl = `https://uploads.github.com/repos/${REPO}/releases/${rel.id}/assets?name=${encodeURIComponent(ASSET_NAME)}`;
-  console.log(`↑ uploading ${ASSET_NAME} (${(fs.statSync(ASSET_PATH).size / 1048576).toFixed(1)} MB) …`);
-  const args = [
-    '-sS', '-X', 'POST', uploadUrl,
-    '-H', `Authorization: Bearer ${TOKEN}`,
-    '-H', 'Accept: application/vnd.github+json',
-    '-F', `name=@${ASSET_PATH};type=application/octet-stream`,
-    '-w', '\n__HTTP_STATUS__:%{http_code}',
-  ];
-  let out;
-  try {
-    out = execFileSync('curl', args, { encoding: 'utf8' });
-  } catch (e) {
-    out = ((e.stdout || '') + '\n' + (e.stderr || '')).toString();
+  // 2) Clear any existing (possibly corrupt) assets, then upload the full set fresh.
+  await clearAssets(rel);
+  for (const asset of ASSETS) {
+    const mb = (fs.statSync(asset.file).size / 1048576).toFixed(1);
+    console.log(`↑ uploading ${asset.name} (${mb} MB) …`);
+    curlUpload(rel, asset);
+    console.log('✓ attached:', asset.name, `(${fs.statSync(asset.file).size} bytes)`);
   }
-  const m = out.match(/__HTTP_STATUS__:(\d+)/);
-  const status = m ? parseInt(m[1], 10) : 0;
-  const jsonPart = (out.split('__HTTP_STATUS__:')[0] || '').trim();
-  let uj = {};
-  try { uj = JSON.parse(jsonPart); } catch { /* not json */ }
-  if (status < 200 || status >= 300) throw new Error(`Upload ${status}: ${jsonPart.slice(0, 300)}`);
-  console.log('✓ asset attached:', uj.browser_download_url);
   console.log('\nRelease page:', rel.html_url);
 }
 

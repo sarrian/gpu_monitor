@@ -349,10 +349,27 @@ function createWindow() {
       const dest = path.join(dir, asset.name);
       await releases.downloadAsset(asset.url, dest, (pct) => send('release-progress', pct));
       send('release-installing', '');
-      const child = spawn(dest, ['/S'], { detached: true, stdio: 'ignore' }); // NSIS silent install
+      // Launch the installer. A raw CreateProcess of a just-downloaded exe in %TEMP%
+      // is frequently denied on Windows (EACCES) — Defender's real-time scan still
+      // holds the file, or it's marked "from the internet". The shell path a
+      // double-click uses works, so wait for AV to release, then `start` it (retrying).
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const launch = () => process.platform === 'win32'
+        ? spawn(`start "" "${dest}" /S`, { shell: true, detached: true, stdio: 'ignore', windowsHide: true })
+        : spawn(dest, ['/S'], { detached: true, stdio: 'ignore' });
+      let child = null, lastErr = null;
+      for (let i = 0; i < 6; i++) {
+        await sleep(1500); // give Defender time to finish scanning / release the file
+        try { child = launch(); break; } catch (e) { lastErr = e; }
+      }
+      if (!child) {
+        const msg = (lastErr && lastErr.message) || 'Failed to launch installer';
+        send('release-error', msg);
+        throw lastErr || new Error(msg);
+      }
       child.unref();
       // Brief pause so the installer grabs its file handles (and UAC) before we exit
-      setTimeout(() => forceQuit(), 500);
+      setTimeout(() => forceQuit(), 800);
     } catch (err) {
       send('release-error', err.message || String(err));
       throw err;

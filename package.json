@@ -1,6 +1,6 @@
 {
   "name": "gpu-monitor",
-  "version": "1.2.1",  "description": "Lightweight NVIDIA GPU monitoring overlay for Windows",
+  "version": "1.2.2",  "description": "Lightweight NVIDIA GPU monitoring overlay for Windows",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",

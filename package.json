@@ -1,6 +1,6 @@
 {
   "name": "gpu-monitor",
-  "version": "1.2.2",  "description": "Lightweight NVIDIA GPU monitoring overlay for Windows",
+  "version": "1.2.3",  "description": "Lightweight NVIDIA GPU monitoring overlay for Windows",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -27,7 +27,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "GPU Monitor",
-      "uninstallDisplayName": "GPU Monitor"
+      "uninstallDisplayName": "GPU Monitor",
+      "include": "build/shortcuts.nsh"
     },
     "artifactName": "GPU-Monitor-Setup-${version}-${os}.${ext}"
   },

@@ -331,14 +331,23 @@ function createWindow() {
   }));
 
   /**
-   * Download the chosen release's .exe installer and run it (NSIS silent),
-   * then quit so the installer can replace the running files.
-   * Ordering matters: spawn detached BEFORE quit — the installer must survive app exit.
+   * Download the chosen release's .exe installer, then quit and hand off to a
+   * detached helper that silent-installs (/S /force-run) once we've exited — the
+   * /force-run flag auto-launches the new app, so the user never relaunches by hand.
+   * Ordering matters: spawn the detached helper BEFORE forceQuit — it must survive
+   * the app's exit to do the install + relaunch.
    */
   ipcMain.handle('install-release', async (_e, _tag, asset) => {
     if (!asset || typeof asset.url !== 'string'
         || !/^(https:\/\/([a-z0-9.-]*github\.com|objects\.githubusercontent\.com)\/)/.test(asset.url)) {
       throw new Error('Invalid asset URL');
+    }
+    // Defense-in-depth: the picker already hides builds below MIN_INSTALLABLE, but
+    // never let an old build be installed from the main process either — downgrading
+    // below v1.2.2 strands the user (that updater can't pull them back up).
+    if (releases.MIN_INSTALLABLE && releases.verAtLeast
+        && !releases.verAtLeast(String(_tag || '').replace(/^v/, ''), releases.MIN_INSTALLABLE)) {
+      throw new Error('Version ' + (_tag || 'unknown') + ' is older than the installable minimum (v' + releases.MIN_INSTALLABLE + ').');
     }
     const send = (n, d) => {
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater-event', n, d);
@@ -349,27 +358,29 @@ function createWindow() {
       const dest = path.join(dir, asset.name);
       await releases.downloadAsset(asset.url, dest, (pct) => send('release-progress', pct));
       send('release-installing', '');
-      // Launch the installer. A raw CreateProcess of a just-downloaded exe in %TEMP%
-      // is frequently denied on Windows (EACCES) — Defender's real-time scan still
-      // holds the file, or it's marked "from the internet". The shell path a
-      // double-click uses works, so wait for AV to release, then `start` it (retrying).
-      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-      const launch = () => process.platform === 'win32'
-        ? spawn(`start "" "${dest}" /S`, { shell: true, detached: true, stdio: 'ignore', windowsHide: true })
-        : spawn(dest, ['/S'], { detached: true, stdio: 'ignore' });
-      let child = null, lastErr = null;
-      for (let i = 0; i < 6; i++) {
-        await sleep(1500); // give Defender time to finish scanning / release the file
-        try { child = launch(); break; } catch (e) { lastErr = e; }
+      // Seamless relaunch: quit THIS app first so it releases its locked exe/dlls,
+      // then a small detached helper (Windows built-in PowerShell — no new deps)
+      // waits for us to fully exit and runs the installer SILENT with /force-run.
+      // `/force-run` is electron-builder's built-in flag that auto-launches the new
+      // app on the finish page — so the user is handed back a running app with no
+      // manual relaunch. Start-Process is a shell launch, which also sidesteps the
+      // raw-CreateProcess EACCES the old retry loop was working around.
+      const oldPid = process.pid;
+      if (process.platform === 'win32') {
+        const ps = 'try { Wait-Process -Id ' + oldPid + ' -Timeout 90 } catch {}; '
+          + 'Start-Sleep -Milliseconds 800; '
+          + 'Start-Process -FilePath \'' + dest + '\' -ArgumentList \'/S\',\'/force-run\' -Wait';
+        const helper = spawn('powershell.exe',
+          ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps],
+          { detached: true, stdio: 'ignore', windowsHide: true });
+        helper.unref();
+      } else {
+        // Non-Windows (dev/other): silent install; /force-run has no meaning there.
+        const child = spawn(dest, ['/S'], { detached: true, stdio: 'ignore' });
+        child.unref();
       }
-      if (!child) {
-        const msg = (lastErr && lastErr.message) || 'Failed to launch installer';
-        send('release-error', msg);
-        throw lastErr || new Error(msg);
-      }
-      child.unref();
-      // Brief pause so the installer grabs its file handles (and UAC) before we exit
-      setTimeout(() => forceQuit(), 800);
+      // Quit promptly so the installer can replace the running files.
+      forceQuit();
     } catch (err) {
       send('release-error', err.message || String(err));
       throw err;

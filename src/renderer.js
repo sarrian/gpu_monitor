@@ -847,7 +847,14 @@ async function refreshReleases() {
       const $ddBtn = document.querySelector('#dd-set-release-version .dd-btn');
       if ($ddBtn && $sel.options[$sel.selectedIndex]) $ddBtn.textContent = $sel.options[$sel.selectedIndex].text;
     }
-    if ($status) $status.textContent = releaseList.length ? releaseList.length + ' version(s) found.' : 'No published releases found.';
+    if ($status) {
+      const cur = String(res.current || '');
+      const switchable = releaseList.filter((r) => r.exeAsset && r.tag.replace(/^v/, '') !== cur).length;
+      $status.textContent = switchable > 0
+        ? switchable + ' other version(s) available.'
+        : (releaseList.length ? 'You\'re on the latest version (v' + cur + ').' : 'No published releases found.');
+      $status.textContent += '  Only v1.2.2+ is offered — older builds can\'t auto-update back.';
+    }
   } catch (e) {
     if ($status) $status.textContent = 'Error: ' + (e && e.message ? e.message : e);
   }

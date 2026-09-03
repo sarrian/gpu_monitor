@@ -7,6 +7,29 @@ const REPO_RELEASES_URL = 'https://api.github.com/repos/sarrian/gpu_monitor/rele
 const USER_AGENT = 'GPU-Monitor-Update/1.1';
 const MAX_HOPS = 5; // asset URLs 302 to objects.githubusercontent.com
 
+// First build whose in-app updater actually works. Installing anything older than
+// this strands the user: that older build's updater can't pull them back up to
+// 1.2.2+, so a downgrade is a trap. Newer versions (1.3.0, …) remain installable.
+const MIN_INSTALLABLE = '1.2.2';
+
+/**
+ * True if version `a` is >= version `b`, comparing dotted numeric parts.
+ * Tolerates a leading "v" and non-numeric trailing segments (e.g. "1.2.2-beta").
+ * @param {string} a
+ * @param {string} b
+ * @returns {boolean}
+ */
+function verAtLeast(a, b) {
+  const pa = String(a).replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b).replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x > y) return true;
+    if (x < y) return false;
+  }
+  return true; // equal
+}
+
 /**
  * GET a URL over https, following redirects manually (≤5 hops).
  * @param {string} url
@@ -47,6 +70,8 @@ async function listReleases() {
   if (!Array.isArray(releases)) return [];
   return releases
     .filter((r) => !r.draft && Array.isArray(r.assets) && r.assets.length)
+    // Never offer builds older than the first one with a working updater.
+    .filter((r) => verAtLeast(r.tag_name, MIN_INSTALLABLE))
     .map((r) => {
       const exe = r.assets.find((a) => /\.exe$/i.test(a.name));
       return {
@@ -104,4 +129,4 @@ function downloadAsset(url, dest, onProgress, hops = 0) {
   });
 }
 
-module.exports = { listReleases, downloadAsset };
+module.exports = { listReleases, downloadAsset, MIN_INSTALLABLE, verAtLeast };

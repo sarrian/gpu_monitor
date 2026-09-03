@@ -44,15 +44,16 @@ const BODY = [
   '',
   'Lightweight, always-on-top NVIDIA GPU monitoring overlay for Windows.',
   '',
-  "### What's new in v1.2.2",
-  "- **Fixed: the in-app version picker now installs the chosen release.** The downloaded installer was previously launched with a raw process spawn that Windows denies for a just-downloaded exe (`EACCES`); it now launches through the shell (brief wait for Defender, then retries), so picking a version and installing works.",
-  '- No other behavior changes from v1.2.1.',
+  "### What's new in v1.2.3",
+  '- **Updater version floor.** The in-app version picker (and the install action) now refuse anything older than v1.2.2 — the first build with a working updater. Downgrading to an earlier build would strand you on a client that can no longer update itself back, so the old versions are no longer offered.',
+  '- **Seamless update relaunch.** After an in-app update installs, the app relaunches by itself — no manual restart. A small helper waits for the old process to exit, then runs the new installer silent with auto-launch (`/S /force-run`).',
+  '- **Shortcut choice at install.** The installer now asks whether to create a **desktop shortcut** and/or add the app to the **Start Menu**, and skips whichever you decline. Silent in-app updates keep both shortcuts.',
   '',
-  '### New in v1.2.1 (for reference)',
-  'Sparklines, per-metric Show/Hide, dark dropdowns, compact layout, and the minimize glyph (—) — full details on the v1.2.1 release.',
+  '### New in v1.2.2 (for reference)',
+  '- **Fixed: the in-app version picker now installs the chosen release.** The downloaded installer was launched with a raw process spawn that Windows denies for a just-downloaded exe (`EACCES`); it now launches through the shell (brief wait for Defender, then retries).',
   '',
   '### Install',
-  `- Windows 10/11 x64, NVIDIA GPU. Run \`${INSTALLER}\` (per-machine install, desktop + start-menu shortcuts).`,
+  `- Windows 10/11 x64, NVIDIA GPU. Run \`${INSTALLER}\` (per-machine install; you choose the desktop / Start Menu shortcuts).`,
 ].join('\n');
 
 const H = { Authorization: `Bearer ${TOKEN}`, Accept: 'application/vnd.github+json' };
